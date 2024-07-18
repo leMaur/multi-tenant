@@ -15,15 +15,14 @@
 namespace Hyn\Tenancy\Website;
 
 use Hyn\Tenancy\Contracts\Tenant;
-use Hyn\Tenancy\Environment;
 use Hyn\Tenancy\Contracts\Website;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\Filesystem as LocalSystem;
 use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Macroable;
-use League\Flysystem\Adapter\Local;
 use League\Flysystem\Local\LocalFilesystemAdapter;
+use RuntimeException;
 
 class Directory implements Filesystem
 {
@@ -54,31 +53,9 @@ class Directory implements Filesystem
     }
 
     /**
-     * @param string|null $path
-     * @return bool
+     * {@inheritdoc}
      */
-    public function exists($path = null): bool
-    {
-        return $this->getWebsite() && $this->filesystem->exists($this->path($path));
-    }
-
-    /**
-     * @param Website $website
-     * @return Directory
-     */
-    public function setWebsite(Website $website): Directory
-    {
-        $this->website = $website;
-
-        return $this;
-    }
-
-    /**
-     * @param string $path
-     * @param bool $local
-     * @return string
-     */
-    public function path(string $path = null, $local = false): string
+    public function path($path = null)
     {
         $prefix = "{$this->getWebsite()->uuid}/";
 
@@ -90,7 +67,7 @@ class Directory implements Filesystem
             $path = "$prefix$path";
         }
 
-        if ($local && $this->isLocal()) {
+        if ($this->isLocal()) {
             $config = $this->filesystem->getConfig();
             $path = sprintf(
                 "%s/%s",
@@ -103,12 +80,15 @@ class Directory implements Filesystem
     }
 
     /**
-     * Get the contents of a file.
-     *
-     * @param  string $path
-     * @return string
-     *
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
+     * {@inheritdoc}
+     */
+    public function exists($path = null): bool
+    {
+        return $this->getWebsite() && $this->filesystem->exists($this->path($path));
+    }
+
+    /**
+     * {@inheritdoc}
      */
     public function get($path)
     {
@@ -118,27 +98,51 @@ class Directory implements Filesystem
     }
 
     /**
-     * Write the contents of a file.
-     *
-     * @param  string $path
-     * @param  string|resource $contents
-     * @param  string $visibility
-     * @return bool
+     * {@inheritdoc}
      */
-    public function put($path, $contents, $visibility = null)
+    public function readStream($path)
+    {
+        return $this->filesystem->readStream($this->path($path));
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function put($path, $contents, $options = [])
     {
         return $this->filesystem->put(
             $this->path($path),
             $contents,
-            compact('visibility')
+            $options
         );
     }
 
     /**
-     * Get the visibility for the given path.
-     *
-     * @param  string $path
-     * @return string
+     * {@inheritdoc}
+     */
+    public function putFile($path, $file = null, $options = [])
+    {
+        throw new RuntimeException('Not implemented.');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function putFileAs($path, $file, $name = null, $options = [])
+    {
+        throw new RuntimeException('Not implemented.');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function writeStream($path, $resource, array $options = [])
+    {
+        return $this->filesystem->writeStream($this->path($path), $resource, $options);
+    }
+
+    /**
+     * {@inheritdoc}
      */
     public function getVisibility($path)
     {
@@ -148,11 +152,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Set the visibility for the given path.
-     *
-     * @param  string $path
-     * @param  string $visibility
-     * @return void
+     * {@inheritdoc}
      */
     public function setVisibility($path, $visibility)
     {
@@ -163,11 +163,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Prepend to a file.
-     *
-     * @param  string $path
-     * @param  string $data
-     * @return int
+     * {@inheritdoc}
      */
     public function prepend($path, $data)
     {
@@ -178,11 +174,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Append to a file.
-     *
-     * @param  string $path
-     * @param  string $data
-     * @return int
+     * {@inheritdoc}
      */
     public function append($path, $data)
     {
@@ -193,10 +185,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Delete the file at a given path.
-     *
-     * @param  string|array $paths
-     * @return bool
+     * {@inheritdoc}
      */
     public function delete($paths)
     {
@@ -211,11 +200,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Copy a file to a new location.
-     *
-     * @param  string $from
-     * @param  string $to
-     * @return bool
+     * {@inheritdoc}
      */
     public function copy($from, $to)
     {
@@ -226,11 +211,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Move a file to a new location.
-     *
-     * @param  string $from
-     * @param  string $to
-     * @return bool
+     * {@inheritdoc}
      */
     public function move($from, $to)
     {
@@ -241,10 +222,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Get the file size of a given file.
-     *
-     * @param  string $path
-     * @return int
+     * {@inheritdoc}
      */
     public function size($path)
     {
@@ -254,10 +232,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Get the file's last modification time.
-     *
-     * @param  string $path
-     * @return int
+     * {@inheritdoc}
      */
     public function lastModified($path)
     {
@@ -267,11 +242,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Get an array of all files in a directory.
-     *
-     * @param  string|null $directory
-     * @param  bool $recursive
-     * @return array
+     * {@inheritdoc}
      */
     public function files($directory = null, $recursive = false)
     {
@@ -282,10 +253,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Get all of the files from the given directory (recursive).
-     *
-     * @param  string|null $directory
-     * @return array
+     * {@inheritdoc}
      */
     public function allFiles($directory = null)
     {
@@ -295,11 +263,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Get all of the directories within a given directory.
-     *
-     * @param  string|null $directory
-     * @param  bool $recursive
-     * @return array
+     * {@inheritdoc}
      */
     public function directories($directory = null, $recursive = false)
     {
@@ -310,10 +274,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Get all (recursive) of the directories within a given directory.
-     *
-     * @param  string|null $directory
-     * @return array
+     * {@inheritdoc}
      */
     public function allDirectories($directory = null)
     {
@@ -323,10 +284,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Create a directory.
-     *
-     * @param  string $path
-     * @return bool
+     * {@inheritdoc}
      */
     public function makeDirectory($path)
     {
@@ -336,10 +294,7 @@ class Directory implements Filesystem
     }
 
     /**
-     * Recursively delete a directory.
-     *
-     * @param  string $directory
-     * @return bool
+     * {@inheritdoc}
      */
     public function deleteDirectory($directory)
     {
@@ -348,44 +303,29 @@ class Directory implements Filesystem
         );
     }
 
-    /**
-     * @return Website|null
-     */
-    public function getWebsite()
+    public function setWebsite(Website $website): Directory
+    {
+        $this->website = $website;
+
+        return $this;
+    }
+
+    public function getWebsite(): Website|null
     {
         return $this->website ?? app(Tenant::class);
     }
 
-    /**
-     * @return bool
-     */
     public function isLocal(): bool
     {
         return $this->filesystem->getAdapter() instanceof LocalFilesystemAdapter;
     }
 
-    public function __call($name, $arguments)
+    public function __call($method, $parameters)
     {
-        if ($this->isLocal() && method_exists($this->local, $name)) {
-            $arguments[0] = $this->path($arguments[0], true);
+        if ($this->isLocal() && method_exists($this->local, $method)) {
+            $parameters[0] = $this->path($parameters[0]);
 
-            return call_user_func_array([$this->local, $name], $arguments);
+            return call_user_func_array([$this->local, $method], $parameters);
         }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function readStream($path)
-    {
-        return $this->filesystem->readStream($this->path($path));
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function writeStream($path, $resource, array $options = [])
-    {
-        return $this->filesystem->writeStream($this->path($path), $resource, $options);
     }
 }
